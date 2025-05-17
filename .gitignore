@@ -1,0 +1,10 @@
+/__*
+*.log
+.env
+/log*
+.DS_Store
+.eslintcache
+node_modules
+dist-jsr
+dist-libs
+dist-npm

@@ -1,0 +1,41 @@
+{
+  "name": "@reliverse/bleump",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "@reliverse/bleump is a powerful version bump tool for javascript and typescript",
+  "scripts": {
+    "pub": "dler pub",
+    "dev": "bun src/cli.ts",
+    "latest": "bun update --latest && bun check",
+    "check": "tsc --noEmit && eslint --cache --fix . && biome check --fix --unsafe . && knip",
+    "tests": "bun test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@eslint/js": "^9.27.0",
+    "@reliverse/cli-cfg": "^1.6.5",
+    "@reliverse/dler": "^1.3.6",
+    "@stylistic/eslint-plugin": "^4.2.0",
+    "@types/bun": "^1.2.13",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.15.18",
+    "@types/semver": "^7.7.0",
+    "eslint": "^9.27.0",
+    "eslint-plugin-no-relative-import-paths": "^1.6.1",
+    "eslint-plugin-perfectionist": "^4.13.0",
+    "knip": "^5.56.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1"
+  },
+  "dependencies": {
+    "@reliverse/bleregex": "^1.0.1",
+    "@reliverse/relinka": "^1.4.5",
+    "@reliverse/rempts": "^1.7.12",
+    "fs-extra": "^11.3.0",
+    "p-map": "^7.0.3",
+    "pathe": "^2.0.3",
+    "pkg-types": "^2.1.0",
+    "semver": "^7.7.2",
+    "tinyglobby": "^0.2.13"
+  }
+}

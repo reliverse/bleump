@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "paths": { "~/*": ["./src/*"] },
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "noEmit": true,
+
+    "exactOptionalPropertyTypes": false,
+    "noFallthroughCasesInSwitch": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "strictNullChecks": false
+  },
+
+  "include": [".*/**/*.ts", "**/*.ts", "**/*.js", ".config/dler.ts="],
+  "exclude": ["node_modules", "dist*"]
+}
