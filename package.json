@@ -1,8 +1,8 @@
 {
   "name": "@reliverse/bleump",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
-  "description": "@reliverse/bleump is a powerful version bump tool for javascript and typescript",
+  "description": "Need a hassle-free way to bump versions across your JS/TS project? `@reliverse/bleump` has got you covered! It's available both as a CLI tool and a library.",
   "scripts": {
     "pub": "dler pub",
     "dev": "bun src/cli.ts",

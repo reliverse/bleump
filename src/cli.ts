@@ -8,13 +8,24 @@ import {
 } from "@reliverse/rempts";
 import fs from "fs-extra";
 import path from "pathe";
+import semver from "semver";
 
 import type { BumpMode } from "./types.js";
 
-import { bumpHandler } from "./impl.js";
+import {
+  bumpHandler,
+  autoIncrementVersion,
+  analyzeFiles,
+  getCurrentVersion,
+} from "./impl.js";
 import { showEndPrompt, showStartPrompt } from "./info.js";
 
-const bumpModes: BumpMode[] = ["autoPatch", "autoMinor", "autoMajor"];
+const bumpModes: BumpMode[] = [
+  "autoPatch",
+  "autoMinor",
+  "autoMajor",
+  "customVersion",
+];
 
 const main = defineCommand({
   meta: {
@@ -32,6 +43,10 @@ const main = defineCommand({
       description: "The bump mode to use",
       allowed: bumpModes,
     },
+    customVersion: {
+      type: "string",
+      description: "Custom version to set (only used with customVersion mode)",
+    },
     disableBump: {
       type: "boolean",
       description: "Disables the bump (this is useful for CI)",
@@ -44,6 +59,12 @@ const main = defineCommand({
     dryRun: {
       type: "boolean",
       description: "Preview changes without writing files",
+    },
+    mainFile: {
+      type: "string",
+      description:
+        "The file to use as version source (defaults to package.json)",
+      default: "package.json",
     },
   }),
   async run({ args }) {
@@ -76,6 +97,15 @@ const main = defineCommand({
     const isCI = process.env.CI === "true";
     const isNonInteractive = !process.stdout.isTTY;
     const dryRun = !!args.dryRun;
+    const mainFile = path.resolve(args.mainFile);
+    let customVersion = args.customVersion;
+
+    // Validate customVersion if provided
+    if (customVersion && !semver.valid(customVersion)) {
+      relinka("error", `Invalid custom version: ${customVersion}`);
+      process.exit(1);
+    }
+
     let effectiveFilesToBump: string[] = Array.isArray(args.filesToBump)
       ? args.filesToBump
       : args.filesToBump
@@ -106,9 +136,21 @@ const main = defineCommand({
         relinka("error", `Invalid bump mode: ${effectiveBumpMode}`);
         process.exit(1);
       }
-      await bumpHandler(effectiveBumpMode, args.disableBump, filesToBumpArr, {
-        dryRun,
-      });
+      // Validate customVersion is provided when needed
+      if (effectiveBumpMode === "customVersion" && !customVersion) {
+        relinka(
+          "error",
+          "customVersion is required when using customVersion mode",
+        );
+        process.exit(1);
+      }
+      await bumpHandler(
+        effectiveBumpMode,
+        args.disableBump,
+        filesToBumpArr,
+        { dryRun, mainFile },
+        customVersion,
+      );
       process.exit(0);
     }
 
@@ -116,38 +158,29 @@ const main = defineCommand({
     // INTERACTIVE SESSION
     // ===================
 
-    // Read current version for prompt
-    let currentVersion = "unknown";
+    // Read current versions
+    let bleumpVersion = "unknown";
+    let projectVersion = "unknown";
     try {
-      const pkg = await import("../package.json", { assert: { type: "json" } });
-      currentVersion = pkg.default.version || "unknown";
-    } catch {
-      /* empty */
-    }
-
-    await showStartPrompt(args.dev, currentVersion);
-
-    if (!args.bumpMode) {
-      effectiveBumpMode = await selectPrompt({
-        title: `Select a bump mode (current version: ${currentVersion})`,
-        options: [
-          { value: "autoPatch", label: "autoPatch" },
-          { value: "autoMinor", label: "autoMinor" },
-          { value: "autoMajor", label: "autoMajor" },
-        ],
+      // Read bleump's own version
+      const bleumpPkg = await import("../package.json", {
+        assert: { type: "json" },
       });
-    }
-    // Validate after prompt
-    if (!bumpModes.includes(effectiveBumpMode)) {
-      relinka("error", `Invalid bump mode: ${effectiveBumpMode}`);
-      process.exit(1);
+      bleumpVersion = bleumpPkg.default.version || "unknown";
+
+      // Read project's version using getCurrentVersion with resolved path
+      projectVersion = await getCurrentVersion(mainFile);
+    } catch (e) {
+      relinka("warn", `Could not read package versions: ${e}`);
     }
 
+    await showStartPrompt(args.dev, bleumpVersion);
+
+    // Ask for files first
     if (!args.filesToBump || filesToBumpArr.length === 0) {
       const defaultFiles = await getDefaultFilesToBump();
       const input = await inputPrompt({
-        title:
-          "Which files do you want to bump? (separate multiple files with space)",
+        title: "Which files do you want to bump?",
         content: `Press <Enter> to use default: ${defaultFiles.join(" ")}`,
         defaultValue: defaultFiles.join(" "),
       });
@@ -161,11 +194,97 @@ const main = defineCommand({
       .map((f) => f.trim())
       .filter(Boolean);
 
+    // Analyze files before proceeding
+    const fileAnalysis = await analyzeFiles(
+      filesToBumpArrInteractive,
+      projectVersion,
+    );
+    const supportedFiles = fileAnalysis.filter((r) => r.supported);
+    const unsupportedFiles = fileAnalysis.filter((r) => !r.supported);
+    const mismatchedFiles = fileAnalysis.filter((r) => r.versionMismatch);
+
+    if (supportedFiles.length === 0) {
+      relinka("error", "No files can be bumped. Analysis results:");
+      for (const file of unsupportedFiles) {
+        relinka("error", `  ${file.file}: ${file.reason}`);
+      }
+      process.exit(1);
+    }
+
+    if (mismatchedFiles.length > 0) {
+      relinka("warn", "Warning: Some files have mismatched versions:");
+      for (const file of mismatchedFiles) {
+        relinka(
+          "warn",
+          `  ${file.file}: found version ${file.detectedVersion} (expected ${projectVersion})`,
+        );
+      }
+    }
+
+    // Then ask for bump mode
+    if (!args.bumpMode) {
+      // Calculate the actual version numbers for each bump mode
+      const patchVersion = autoIncrementVersion(projectVersion, "autoPatch");
+      const minorVersion = autoIncrementVersion(projectVersion, "autoMinor");
+      const majorVersion = autoIncrementVersion(projectVersion, "autoMajor");
+
+      effectiveBumpMode = await selectPrompt({
+        title: `Select a bump mode (current: ${projectVersion} from ${path.relative(process.cwd(), mainFile)})`,
+        options: [
+          {
+            value: "autoPatch",
+            label: `autoPatch (${projectVersion} → ${patchVersion})`,
+          },
+          {
+            value: "autoMinor",
+            label: `autoMinor (${projectVersion} → ${minorVersion})`,
+          },
+          {
+            value: "autoMajor",
+            label: `autoMajor (${projectVersion} → ${majorVersion})`,
+          },
+          {
+            value: "customVersion",
+            label: "customVersion (enter your own version)",
+          },
+        ],
+      });
+
+      // If customVersion selected, prompt for the version
+      if (effectiveBumpMode === "customVersion") {
+        customVersion = await inputPrompt({
+          title: "Enter the version number",
+          content: "Must be a valid semver (e.g., 1.2.3)",
+          defaultValue: projectVersion,
+          validate: (input) => {
+            if (!semver.valid(input)) {
+              return "Please enter a valid semver version (e.g., 1.2.3)";
+            }
+            return true;
+          },
+        });
+      }
+    }
+    // Validate after prompt
+    if (!bumpModes.includes(effectiveBumpMode)) {
+      relinka("error", `Invalid bump mode: ${effectiveBumpMode}`);
+      process.exit(1);
+    }
+    // Validate customVersion is provided when needed
+    if (effectiveBumpMode === "customVersion" && !customVersion) {
+      relinka(
+        "error",
+        "customVersion is required when using customVersion mode",
+      );
+      process.exit(1);
+    }
+
     await bumpHandler(
       effectiveBumpMode,
       args.disableBump,
       filesToBumpArrInteractive,
-      { dryRun },
+      { dryRun, mainFile },
+      customVersion,
     );
 
     relinka("log", " ");

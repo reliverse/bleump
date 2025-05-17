@@ -7,7 +7,7 @@ import { readPackageJSON } from "pkg-types";
 import semver from "semver";
 import { glob } from "tinyglobby";
 
-import type { BumpMode } from "./types.js";
+import type { BumpMode, BumpOptions } from "./types.js";
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
 const IGNORE_PATTERNS = [
@@ -29,18 +29,66 @@ const SHOW_VERBOSE = false;
 const CONCURRENCY_DEFAULT = 5;
 
 /**
+ * Gets the current version from a file
+ */
+export async function getCurrentVersion(filePath: string): Promise<string> {
+  if (!(await fs.pathExists(filePath))) {
+    throw new Error(`Version source file not found: ${filePath}`);
+  }
+
+  // For package.json, use pkg-types
+  if (filePath.endsWith("package.json")) {
+    const pkgJson = await readPackageJSON(path.dirname(filePath));
+    if (!pkgJson.version) {
+      throw new Error("No version field found in package.json");
+    }
+    return pkgJson.version;
+  }
+
+  // For other files, try to extract version
+  const content = await readFileSafe(filePath, "getCurrentVersion");
+
+  // Try JSON files first
+  if (/\.(json|jsonc|json5)$/.test(filePath)) {
+    const match = /"version"\s*:\s*"([^"]+)"/.exec(content);
+    if (match) {
+      return match[1];
+    }
+  }
+  // Then try TypeScript files
+  else if (filePath.endsWith(".ts")) {
+    const match = /version['"]\s*:\s*['"]([^'"]+)['"]/.exec(content);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  throw new Error(`Could not find version in file: ${filePath}`);
+}
+
+/**
  * Handles version bumping.
  */
 export async function bumpHandler(
   bumpMode: BumpMode,
   bumpDisable: boolean,
   bumpFilter: string[],
-  options?: { dryRun?: boolean },
+  options?: Omit<BumpOptions, "customVersion">,
+  customVersion?: string,
 ): Promise<void> {
-  const dryRun = !!options?.dryRun;
-  if (!["autoPatch", "autoMinor", "autoMajor"].includes(bumpMode)) {
+  const dryRun = options?.dryRun ?? false;
+  const mainFile = options?.mainFile ?? path.resolve("package.json");
+
+  if (
+    !["autoPatch", "autoMinor", "autoMajor", "customVersion"].includes(bumpMode)
+  ) {
     throw new Error("Invalid bump mode");
   }
+
+  if (bumpMode === "customVersion" && !customVersion) {
+    throw new Error("customVersion is required when using customVersion mode");
+  }
+
   if (bumpDisable) {
     relinka(
       "log",
@@ -49,35 +97,46 @@ export async function bumpHandler(
     return;
   }
 
-  const pkgPath = path.resolve("package.json");
-  if (!(await fs.pathExists(pkgPath))) {
-    throw new Error("package.json not found");
-  }
-  const pkgJson = await readPackageJSON();
-  if (!pkgJson.version) {
-    throw new Error("No version field found in package.json");
-  }
-  const oldVersion = pkgJson.version;
+  try {
+    const oldVersion = await getCurrentVersion(mainFile);
+    if (!semver.valid(oldVersion)) {
+      throw new Error(`Invalid existing version in ${mainFile}: ${oldVersion}`);
+    }
 
-  if (!semver.valid(oldVersion)) {
-    throw new Error(`Invalid existing version in package.json: ${oldVersion}`);
-  }
-  relinka(
-    "null",
-    `Auto-incrementing version from ${oldVersion} using "${bumpMode}"${dryRun ? " [dry run]" : ""}`,
-  );
-  const incremented = autoIncrementVersion(oldVersion, bumpMode);
-  if (oldVersion !== incremented) {
-    await bumpVersions(oldVersion, incremented, bumpFilter, { dryRun });
-  } else {
-    relinka("log", `Version is already at ${oldVersion}, no bump needed.`);
+    let incremented: string;
+    if (bumpMode === "customVersion") {
+      // We already validated customVersion exists above
+      incremented = customVersion || "";
+      if (!incremented) {
+        throw new Error("customVersion is unexpectedly empty");
+      }
+      relinka(
+        "log",
+        `Setting version to custom value: ${incremented}${dryRun ? " [dry run]" : ""} (source: ${mainFile})`,
+      );
+    } else {
+      relinka(
+        "log",
+        `Auto-incrementing version from ${oldVersion} using "${bumpMode}"${dryRun ? " [dry run]" : ""} (source: ${mainFile})`,
+      );
+      incremented = autoIncrementVersion(oldVersion, bumpMode);
+    }
+
+    if (oldVersion !== incremented) {
+      await bumpVersions(oldVersion, incremented, bumpFilter, options);
+    } else {
+      relinka("log", `Version is already at ${oldVersion}, no bump needed.`);
+    }
+  } catch (error) {
+    relinka("error", `Failed to read version from ${mainFile}:`, error);
+    throw error;
   }
 }
 
 /**
  * Auto-increments a semantic version based on the specified bumpMode.
  */
-function autoIncrementVersion(
+export function autoIncrementVersion(
   oldVersion: string,
   bumpMode: "autoMajor" | "autoMinor" | "autoPatch",
 ): string {
@@ -384,4 +443,101 @@ async function bumpVersions(
     throw error;
   }
   relinka("verbose", "Exiting bumpVersions");
+}
+
+/**
+ * Result of analyzing a file for version patterns
+ */
+export type FileAnalysisResult = {
+  file: string;
+  supported: boolean;
+  reason?: string;
+  detectedVersion?: string;
+  versionMismatch?: boolean;
+};
+
+/**
+ * Analyzes files to determine which ones can be bumped and if they have version mismatches
+ */
+export async function analyzeFiles(
+  files: string[],
+  currentVersion: string,
+): Promise<FileAnalysisResult[]> {
+  const results: FileAnalysisResult[] = [];
+
+  await pMap(
+    files,
+    async (file) => {
+      try {
+        if (!(await fs.pathExists(file))) {
+          results.push({
+            file,
+            supported: false,
+            reason: "File does not exist",
+          });
+          return;
+        }
+
+        const content = await readFileSafe(file, "analyzeFiles");
+        let supported = false;
+        let detectedVersion: string | undefined;
+
+        // Check JSON files
+        if (/\.(json|jsonc|json5)$/.test(file)) {
+          const jsonPattern = VERSION_PATTERNS.find(
+            (p) => p.id === "json-version",
+          );
+          if (jsonPattern) {
+            const match = content.match(jsonPattern.pattern(currentVersion));
+            if (match) {
+              supported = true;
+              // Extract the actual version from the match
+              const versionMatch = /"version":\s*"([^"]+)"/.exec(content);
+              if (versionMatch) {
+                detectedVersion = versionMatch[1];
+              }
+            }
+          }
+        }
+        // Check TypeScript files
+        else if (file.endsWith(".ts")) {
+          const tsPatterns = VERSION_PATTERNS.filter((p) =>
+            p.id.startsWith("ts-"),
+          );
+          for (const { pattern } of tsPatterns) {
+            const regex = pattern(currentVersion);
+            if (regex.test(content)) {
+              supported = true;
+              // Try to extract version from the match
+              const versionMatch = /version['"]\s*:\s*['"]([^'"]+)['"]/.exec(
+                content,
+              );
+              if (versionMatch) {
+                detectedVersion = versionMatch[1];
+                break;
+              }
+            }
+          }
+        }
+
+        results.push({
+          file,
+          supported,
+          reason: supported ? undefined : "No supported version patterns found",
+          detectedVersion,
+          versionMismatch:
+            detectedVersion && detectedVersion !== currentVersion,
+        });
+      } catch (err) {
+        results.push({
+          file,
+          supported: false,
+          reason: `Error analyzing file: ${err}`,
+        });
+      }
+    },
+    { concurrency: CONCURRENCY_DEFAULT },
+  );
+
+  return results;
 }
