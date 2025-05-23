@@ -9,7 +9,7 @@ export default defineConfig({
   // Bump configuration
   bumpDisable: false,
   bumpFilter: ["package.json", ".config/rse.ts"],
-  bumpMode: "autoPatch",
+  bumpMode: "patch",
 
   // Common configuration
   commonPubPause: false,

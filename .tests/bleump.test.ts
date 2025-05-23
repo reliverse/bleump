@@ -1,6 +1,7 @@
+import { relinka } from "@reliverse/relinka";
 import { expect, test } from "bun:test";
 
 test("test", () => {
-  console.log("coming soon");
+  relinka("info", "tests: coming soon");
   expect(true).toBe(true);
 });

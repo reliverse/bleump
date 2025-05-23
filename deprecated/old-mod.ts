@@ -7,7 +7,19 @@ import { readPackageJSON } from "pkg-types";
 import semver from "semver";
 import { glob } from "tinyglobby";
 
-import type { BumpMode, BumpOptions } from "./types.js";
+export type BumpMode =
+  | "autoMajor"
+  | "autoMinor"
+  | "autoPatch"
+  | "customVersion";
+
+export type BumpOptions = {
+  dryRun?: boolean;
+  /** The file to use as the source of truth for version (defaults to package.json) */
+  mainFile?: string;
+  /** Custom version to set (only used with customVersion mode) */
+  customVersion?: string;
+};
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
 const IGNORE_PATTERNS = [

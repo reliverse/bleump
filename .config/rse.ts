@@ -1,4 +1,5 @@
-import { defineConfig } from "@reliverse/cli-cfg";
+// @ts-expect-error TODO: temp
+import { defineConfig } from "@reliverse/rse";
 
 export default defineConfig({
   // RELIVERSE CONFIG (https://docs.reliverse.org/cli)
@@ -11,7 +12,7 @@ export default defineConfig({
   projectAuthor: "reliverse",
   projectDescription:
     "@reliverse/bleump is a powerful version bump tool for javascript and typescript",
-  version: "1.0.0",
+  version: "1.1.4",
   projectLicense: "MIT",
   projectState: "creating",
   projectRepository: "https://github.com/reliverse/bleump",
