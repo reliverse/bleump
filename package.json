@@ -1,41 +1,28 @@
 {
   "name": "@reliverse/bleump",
-  "version": "1.1.4",
+  "version": "1.1.6",
   "type": "module",
   "description": "Need a hassle-free way to bump versions across your JS/TS project? `@reliverse/bleump` has got you covered! It's available both as a CLI tool and a library.",
   "scripts": {
-    "pub": "dler pub",
+    "pub": "bun dler pub",
     "dev": "bun src/cli.ts",
-    "dev:ni": "bun src/cli.ts --dev --bumpType manual --customVersion 1.2.3 --dryRun --mainFile package.json --verbose --files package.json .config/rse.ts",
-    "check": "tsc --noEmit && eslint --cache --fix . && biome check --fix --unsafe . && knip",
+    "dev:ni": "bun src/cli.ts --dev --bumpType manual --customVersion 1.2.3 --dryRun --mainFile package.json --verbose --files package.json reliverse.ts",
+    "check": "tsc --noEmit && biome check --fix --unsafe",
     "latest": "bun update --latest && bun check",
     "tests": "bun test ./.tests"
   },
-  "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@eslint/js": "^9.27.0",
-    "@reliverse/bleregex": "^1.0.1",
-    "@reliverse/dler": "^1.4.6",
-    "@stylistic/eslint-plugin": "^4.2.0",
-    "@types/bun": "^1.2.14",
-    "@types/fs-extra": "^11.0.4",
-    "@types/node": "^22.15.21",
-    "@types/semver": "^7.7.0",
-    "eslint": "^9.27.0",
-    "eslint-plugin-no-relative-import-paths": "^1.6.1",
-    "eslint-plugin-perfectionist": "^4.13.0",
-    "fs-extra": "^11.3.0",
-    "knip": "^5.57.2",
-    "p-map": "^7.0.3",
-    "pathe": "^2.0.3",
-    "pkg-types": "^2.1.0",
-    "tinyglobby": "^0.2.13",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.32.1"
-  },
   "dependencies": {
-    "@reliverse/relinka": "^1.4.7",
-    "@reliverse/rempts": "^1.7.12",
-    "semver": "^7.7.2"
+    "semver": "^7.7.2",
+    "@reliverse/relinka": "^1.5.8",
+    "@reliverse/rempts": "^1.7.52"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.2",
+    "@reliverse/dler": "^1.7.103",
+    "@types/bun": "^1.2.20",
+    "@types/node": "^24.3.0",
+    "@types/semver": "^7.7.0",
+    "typescript": "^5.9.2",
+    "ultracite": "^5.2.5"
   }
 }

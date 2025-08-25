@@ -61,7 +61,7 @@ await bumpVersionWithAnalysis(
   "manual",          // bumpType
   ["package.json"],  // files to bump
   { dryRun: false }, // options
-  "1.2.3",          // bumpSet from .config/dler.ts
+  "1.2.3",          // bumpSet from reliverse.ts
 );
 
 // Manual version with customVersion
@@ -82,7 +82,7 @@ await bumpVersionWithAnalysis(
 bun bleump --bumpType patch --files package.json src/version.ts
 bun bleump --bumpType minor --dryRun  # Preview changes
 bun bleump --bumpType major --mainFile package.json
-bun bleump --bumpType auto --mainFile package.json --files package.json .config/rse.ts
+bun bleump --bumpType auto --mainFile package.json --files package.json reliverse.ts
 bun bleump --bumpType manual --customVersion 2.0.0 --mainFile package.json
 
 # Advanced usage
@@ -92,7 +92,7 @@ bun bleump \
   --dryRun \
   --mainFile package.json \
   --verbose \
-  --files "package.json .config/rse.ts"
+  --files "package.json reliverse.ts"
 
 # Available options
 --dev              # Run in dev mode
@@ -131,7 +131,7 @@ The tool performs deep analysis of your files to:
 
 ### Configuration Management
 
-- Flexible configuration through `.config/dler.ts`
+- Flexible configuration through `reliverse.ts`
 - Support for custom version sources
 - Configurable file patterns
 - Version bump control flags
@@ -178,7 +178,7 @@ const fileAnalysis = await analyzeFiles(
   [
     "package.json",
     "src/version.ts",
-    ".config/rse.ts"
+    "reliverse.ts"
   ],
   currentVersion
 );
@@ -229,7 +229,7 @@ await isBumpDisabled(): Promise<boolean>
 // Set bumpDisable flag to a specific value
 await setBumpDisabledValueTo(value: boolean): Promise<void>
 
-// Update any field in .config/dler.ts
+// Update any field in reliverse.ts
 await updateDlerConfig(field: string, value: any): Promise<void>
 
 // Get current version from a file
@@ -274,9 +274,9 @@ Options:
   --dev                   Run in dev mode
 ```
 
-### Using with `.config/dler.ts`
+### Using with `reliverse.ts`
 
-Create a `.config/dler.ts` to configure default behavior:
+Create a `reliverse.ts` to configure default behavior:
 
 ```ts
 import { defineConfig } from "@reliverse/dler";
@@ -350,7 +350,7 @@ const main = defineCommand({
     files: {
       type: "string",
       description:
-        'Files to bump (comma or space-separated, or quoted: "package.json .config/rse.ts")',
+        'Files to bump (comma or space-separated, or quoted: "package.json reliverse.ts")',
       default: "",
     },
     dryRun: {

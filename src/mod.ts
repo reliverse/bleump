@@ -1,6 +1,6 @@
-import { relinka } from "@reliverse/relinka";
-import { readFile, writeFile, access } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { relinka } from "@reliverse/relinka";
 import semver from "semver";
 
 /**
@@ -49,8 +49,7 @@ const PROJECT_ROOT = process.cwd();
 // patterns to find version in different file types
 const versionPatterns = {
   packageJson: /"version"\s*:\s*"([^"]+)"/,
-  typescript:
-    /version\s*[=:]\s*["']([^"']+)["']|version\s*:\s*["']([^"']+)["']\s*,/,
+  typescript: /version\s*[=:]\s*["']([^"']+)["']|version\s*:\s*["']([^"']+)["']\s*,/,
 } as const;
 
 // simple glob to regex converter (basic implementation)
@@ -100,7 +99,7 @@ export const calculateNewVersion = (
     // Fall back to customVersion if no bumpSet
     if (!customVersion) {
       throw new Error(
-        "either bumpSet (in .config/dler.ts) or --customVersion required when bumpType is 'manual'",
+        "either bumpSet (in reliverse.ts) or --customVersion required when bumpType is 'manual'",
       );
     }
     if (!isValidSemver(customVersion)) {
@@ -136,9 +135,11 @@ export const calculateNewVersion = (
 // detect file type based on extension and content
 const detectFileType = (filePath: string, content: string): FileType => {
   if (filePath.endsWith("package.json")) return "package.json";
-  if (filePath.endsWith(".ts") || filePath.endsWith(".js")) {
-    if (versionPatterns.typescript.test(content)) return "typescript";
-  }
+  if (
+    (filePath.endsWith(".ts") || filePath.endsWith(".js")) &&
+    versionPatterns.typescript.test(content)
+  )
+    return "typescript";
   return "unknown";
 };
 
@@ -159,9 +160,7 @@ const extractVersion = (content: string, fileType: FileType): string | null => {
 };
 
 // read and parse file to get version info
-export const readFileInfo = async (
-  filePath: string,
-): Promise<VersionInfo | null> => {
+export const readFileInfo = async (filePath: string): Promise<VersionInfo | null> => {
   try {
     const content = await readFile(filePath, "utf-8");
 
@@ -237,10 +236,7 @@ const updateVersionInContent = (
 ): string => {
   switch (fileType) {
     case "package.json":
-      return content.replace(
-        versionPatterns.packageJson,
-        `"version": "${newVersion}"`,
-      );
+      return content.replace(versionPatterns.packageJson, `"version": "${newVersion}"`);
     case "typescript": {
       return content.replace(versionPatterns.typescript, (match) => {
         const delimiter = match.includes('"') ? '"' : "'";
@@ -321,8 +317,8 @@ export const getConfigFromDler = async (): Promise<{
   bumpSet?: string;
 }> => {
   try {
-    await access(".config/dler.ts");
-    const content = await readFile(".config/dler.ts", "utf-8");
+    await access("reliverse.ts");
+    const content = await readFile("reliverse.ts", "utf-8");
 
     // Extract files from bumpFilter array in dler config
     const filesMatch = /bumpFilter\s*[:=]\s*\[([\s\S]*?)\]/.exec(content);
@@ -335,11 +331,9 @@ export const getConfigFromDler = async (): Promise<{
           .split(",")
           .map((f) => f.trim().replace(/["']/g, ""))
           .filter(Boolean)
-      : ["package.json", ".config/rse.ts"];
+      : ["package.json", "reliverse.ts"];
 
-    const bumpDisable = bumpDisableMatch
-      ? bumpDisableMatch[1] === "true"
-      : undefined;
+    const bumpDisable = bumpDisableMatch ? bumpDisableMatch[1] === "true" : undefined;
     const bumpMode = bumpModeMatch?.[1] as BumpMode | undefined;
     const bumpSet = bumpSetMatch?.[1];
 
@@ -352,7 +346,7 @@ export const getConfigFromDler = async (): Promise<{
   } catch {
     // config file doesn't exist or can't be read
     return {
-      files: ["package.json", ".config/rse.ts"],
+      files: ["package.json", "reliverse.ts"],
     };
   }
 };
@@ -375,12 +369,7 @@ export const bumpVersion = async (
 
   // get current version from package.json
   const currentVersion = await getCurrentVersion();
-  const newVersion = calculateNewVersion(
-    currentVersion,
-    bumpType,
-    customVersion,
-    bumpSet,
-  );
+  const newVersion = calculateNewVersion(currentVersion, bumpType, customVersion, bumpSet);
 
   if (verbose) {
     relinka("info", `bumping version: ${currentVersion} → ${newVersion}`);
@@ -411,11 +400,7 @@ export const bumpVersion = async (
         continue;
       }
 
-      const updatedContent = updateVersionInContent(
-        content,
-        newVersion,
-        fileType,
-      );
+      const updatedContent = updateVersionInContent(content, newVersion, fileType);
 
       if (dryRun) {
         relinka("log", `- [dry-run] would update ${file}`);
@@ -508,10 +493,7 @@ export type SessionConfig = {
 };
 
 // Validate bump configuration
-export function validateBumpConfig(
-  bumpType: BumpMode,
-  customVersion?: string,
-): void {
+export function validateBumpConfig(bumpType: BumpMode, customVersion?: string): void {
   if (!["patch", "minor", "major", "auto", "manual"].includes(bumpType)) {
     throw new Error(`Invalid bump type: ${bumpType}`);
   }
@@ -524,10 +506,7 @@ export function validateBumpConfig(
 }
 
 // Get default bump type based on environment
-export function getDefaultBumpMode(
-  isCI: boolean,
-  isNonInteractive: boolean,
-): BumpMode {
+export function getDefaultBumpMode(isCI: boolean, isNonInteractive: boolean): BumpMode {
   if (isCI || isNonInteractive) {
     return "patch";
   }
@@ -535,9 +514,7 @@ export function getDefaultBumpMode(
 }
 
 // Handle non-interactive session
-export async function handleNonInteractiveSession(
-  config: SessionConfig,
-): Promise<void> {
+export async function handleNonInteractiveSession(config: SessionConfig): Promise<void> {
   const { bumpType, options, filesToBump } = config;
   validateBumpConfig(bumpType, options.customVersion);
 
@@ -566,18 +543,13 @@ export async function handleInteractiveSession(
   const mismatchedFiles = fileAnalysis.filter((r) => r.versionMismatch);
 
   if (supportedFiles.length === 0) {
-    const reasons = unsupportedFiles
-      .map((f) => `${f.file}: ${f.reason}`)
-      .join("\n");
+    const reasons = unsupportedFiles.map((f) => `${f.file}: ${f.reason}`).join("\n");
     throw new Error(`No files can be bumped. Analysis results:\n${reasons}`);
   }
 
   if (mismatchedFiles.length > 0) {
     const mismatches = mismatchedFiles
-      .map(
-        (f) =>
-          `${f.file}: found version ${f.detectedVersion} (expected ${projectVersion})`,
-      )
+      .map((f) => `${f.file}: found version ${f.detectedVersion} (expected ${projectVersion})`)
       .join("\n");
     relinka("warn", "Some files have mismatched versions:");
     relinka("info", mismatches);
@@ -606,16 +578,13 @@ async function fileExists(filePath: string): Promise<boolean> {
 /**
  * Updates a specific config value in the dler.ts config file
  */
-async function updateDlerConfig(
-  key: string,
-  value: string | boolean | string[],
-): Promise<void> {
-  const dlerCfgPath = join(PROJECT_ROOT, ".config/dler.ts");
+async function updateDlerConfig(key: string, value: string | boolean | string[]): Promise<void> {
+  const dlerCfgPath = join(PROJECT_ROOT, "reliverse.ts");
 
   if (!(await fileExists(dlerCfgPath))) {
     relinka(
-      "warn",
-      `No .config/dler.ts found to update ${key}. This is not an error, but the ${key} flag will not be updated.`,
+      "verbose",
+      `No reliverse.ts found to update ${key}. This is not an error, but the ${key} flag will not be updated.`,
     );
     return;
   }
@@ -632,19 +601,13 @@ async function updateDlerConfig(
 
     // Create the replacement pattern
     const pattern = new RegExp(`${key}\\s*[:=]\\s*([^,}\\]]+)`);
-    const updatedContent = content.replace(
-      pattern,
-      `${key}: ${formattedValue}`,
-    );
+    const updatedContent = content.replace(pattern, `${key}: ${formattedValue}`);
 
     await writeFile(dlerCfgPath, updatedContent, "utf-8");
-    relinka(
-      "info",
-      `Successfully updated ${key} to ${formattedValue} in .config/dler.ts`,
-    );
+    relinka("verbose", `Successfully updated ${key} to ${formattedValue} in reliverse.ts`);
   } catch (error) {
     relinka(
-      "warn",
+      "verbose",
       `Failed to update ${key} in ${dlerCfgPath}. This is not an error, but the ${key} flag will not be updated.`,
       error,
     );
@@ -670,7 +633,7 @@ export async function bumpHandler(
   bumpSet?: string,
 ): Promise<void> {
   if (bumpDisable) {
-    relinka("info", "Version bumping is paused");
+    relinka("verbose", "Version bumping is paused");
     return;
   }
 
@@ -683,7 +646,7 @@ export async function bumpHandler(
       customVersion: bumpMode === "manual" ? bumpSet : undefined,
     });
 
-    relinka("success", "Version bump completed successfully");
+    relinka("verbose", "Version bump completed successfully");
   } catch (error) {
     relinka("error", "Failed to bump version", error);
     throw error;

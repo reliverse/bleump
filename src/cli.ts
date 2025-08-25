@@ -1,28 +1,29 @@
 // cli.ts
+
+import path from "node:path";
 import { relinka } from "@reliverse/relinka";
 import {
-  runMain,
-  defineCommand,
   defineArgs,
-  selectPrompt,
-  inputPrompt,
-  startPrompt,
+  defineCommand,
   endPrompt,
+  inputPrompt,
+  runMain,
+  selectPrompt,
+  startPrompt,
 } from "@reliverse/rempts";
-import path from "node:path";
 import semver from "semver";
 
 import {
-  bumpVersionWithAnalysis,
-  getCurrentVersion,
-  getFilesFromConfigOrDefault,
-  getConfigFromDler,
   type BumpMode,
-  validateBumpConfig,
+  bumpVersionWithAnalysis,
+  getConfigFromDler,
+  getCurrentVersion,
   getDefaultBumpMode,
-  handleNonInteractiveSession,
+  getFilesFromConfigOrDefault,
   handleInteractiveSession,
+  handleNonInteractiveSession,
   type SessionConfig,
+  validateBumpConfig,
 } from "./mod.js";
 
 const bumpTypes: BumpMode[] = ["patch", "minor", "major", "auto", "manual"];
@@ -30,8 +31,7 @@ const bumpTypes: BumpMode[] = ["patch", "minor", "major", "auto", "manual"];
 const main = defineCommand({
   meta: {
     name: "bleump",
-    description:
-      "Allows you to bump the version of your project interactively.",
+    description: "Allows you to bump the version of your project interactively.",
   },
   args: defineArgs({
     dev: {
@@ -54,7 +54,7 @@ const main = defineCommand({
     files: {
       type: "string",
       description:
-        'Files to bump (comma or space-separated, or quoted: "package.json .config/rse.ts")',
+        'Files to bump (comma or space-separated, or quoted: "package.json reliverse.ts")',
       default: "",
     },
     dryRun: {
@@ -63,8 +63,7 @@ const main = defineCommand({
     },
     mainFile: {
       type: "string",
-      description:
-        "The file to use as version source (defaults to package.json)",
+      description: "The file to use as version source (defaults to package.json)",
       default: "package.json",
     },
     verbose: {
@@ -77,8 +76,8 @@ const main = defineCommand({
     const isNonInteractive = !process.stdout.isTTY;
     const dryRun = !!args.dryRun;
     const verbose = !!args.verbose;
-    const mainFile = args.mainFile;
-    const customVersion = args.customVersion;
+    const mainFile = args.mainFile as string;
+    const customVersion = args.customVersion as string | undefined;
 
     // Read current versions
     let bleumpVersion = "unknown";
@@ -93,7 +92,7 @@ const main = defineCommand({
       relinka("warn", `Could not read package versions: ${e}`);
     }
 
-    await showStartPrompt(args.dev, bleumpVersion);
+    await showStartPrompt(args.dev as boolean, bleumpVersion);
 
     // Get files to bump - handle multiple parsing scenarios
     let filesToBumpArr: string[] = [];
@@ -101,7 +100,7 @@ const main = defineCommand({
     // Handle files from --files flag with improved parsing
     if (args.files) {
       // handle both comma and space separation, plus remaining CLI args
-      const filesFromFlag = args.files
+      const filesFromFlag = (args.files as string)
         .split(/[,\s]+/) // split on comma or whitespace
         .map((f) => f.trim())
         .filter(Boolean);
@@ -120,7 +119,7 @@ const main = defineCommand({
       ];
 
       // find files that appear after --files but aren't flags
-      const filesIndex = remainingArgs.findIndex((arg) => arg === "--files");
+      const filesIndex = remainingArgs.indexOf("--files");
       if (filesIndex !== -1) {
         for (let i = filesIndex + 2; i < remainingArgs.length; i++) {
           const arg = remainingArgs[i];
@@ -161,7 +160,7 @@ const main = defineCommand({
 
     // Override disableBump from config if not set via CLI
     if (!args.disableBump && dlerConfig.bumpDisable) {
-      args.disableBump = true;
+      args.disableBump = true as never;
     }
 
     const sessionConfig: SessionConfig = {
@@ -187,10 +186,7 @@ const main = defineCommand({
     }
 
     if (args.disableBump) {
-      relinka(
-        "log",
-        "Bump disabled (--disableBump flag set or configured in dler.ts)",
-      );
+      relinka("log", "Bump disabled (--disableBump flag set or configured in dler.ts)");
       process.exit(0);
     }
 
@@ -246,10 +242,7 @@ const main = defineCommand({
         }
 
         sessionConfig.bumpType = effectiveBumpMode;
-        validateBumpConfig(
-          effectiveBumpMode,
-          sessionConfig.options.customVersion,
-        );
+        validateBumpConfig(effectiveBumpMode, sessionConfig.options.customVersion);
         await bumpVersionWithAnalysis(
           effectiveBumpMode,
           filesToBumpArr,

@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
-    "paths": { "~/*": ["./src/*"] },
+    "paths": {
+      "~/*": ["./src/*"],
+      "@/*": ["example/*"]
+    },
     "baseUrl": ".",
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,10 +17,9 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "noEmit": true,
-
     "exactOptionalPropertyTypes": false,
     "noFallthroughCasesInSwitch": false,
     "noImplicitAny": false,
@@ -26,7 +28,6 @@
     "noUnusedParameters": false,
     "strictNullChecks": false
   },
-
-  "include": [".*/**/*.ts", "**/*.ts", "**/*.js", ".config/dler.ts="],
+  "include": ["src/**/*.ts", "reliverse.ts", "reltypes.ts"],
   "exclude": ["node_modules", "dist*"]
 }
