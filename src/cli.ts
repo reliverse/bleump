@@ -123,7 +123,7 @@ const main = defineCommand({
       if (filesIndex !== -1) {
         for (let i = filesIndex + 2; i < remainingArgs.length; i++) {
           const arg = remainingArgs[i];
-          if (arg.startsWith("--") || knownFlags.includes(arg)) break;
+          if (!arg || arg.startsWith("--") || knownFlags.includes(arg)) break;
           if (!filesFromFlag.includes(arg)) {
             filesFromFlag.push(arg);
           }

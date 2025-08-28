@@ -372,7 +372,7 @@ export const bumpVersion = async (
   const newVersion = calculateNewVersion(currentVersion, bumpType, customVersion, bumpSet);
 
   if (verbose) {
-    relinka("info", `bumping version: ${currentVersion} → ${newVersion}`);
+    relinka("verbose", `bumping version: ${currentVersion} → ${newVersion}`);
   }
 
   // filter files by globs if provided
@@ -408,7 +408,7 @@ export const bumpVersion = async (
       } else {
         await writeFile(file, updatedContent, "utf-8");
         if (verbose) {
-          relinka("log", `- updated ${file}`);
+          relinka("verbose", `- updated ${file}`);
         }
         updateResults.push({ file, success: true });
       }
