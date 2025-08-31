@@ -1,6 +1,6 @@
 # 🪸 reliverse bleump • powerful version bumping
 
-> Need a hassle-free way to bump versions across your JS/TS project? `@reliverse/bleump` has got you covered! It's available both as a CLI tool and a library.
+> @reliverse/bleump is a powerful version bumping tool for javascript and typescript libraries.
 
 [sponsor](https://github.com/sponsors/blefnk) — [discord](https://discord.gg/pb8ukbwpsj) — [repo](https://github.com/reliverse/bleump) — [npm](https://npmjs.com/@reliverse/bleump) — [docs](https://docs.reliverse.org/reliverse/bleump)
 
@@ -35,7 +35,7 @@ bun add -D @reliverse/bleump
 Just run:
 
 ```bash
-bun bleump
+bun rse bump
 ```
 
 That's it! Follow the prompts to:
@@ -77,16 +77,18 @@ await bumpVersionWithAnalysis(
 
 ### CLI Mode
 
+CLI is available via [Rse CLI](https://github.com/reliverse/rse) by Reliverse.
+
 ```bash
 # Basic usage examples
-bun bleump --bumpType patch --files package.json src/version.ts
-bun bleump --bumpType minor --dryRun  # Preview changes
-bun bleump --bumpType major --mainFile package.json
-bun bleump --bumpType auto --mainFile package.json --files package.json reliverse.ts
-bun bleump --bumpType manual --customVersion 2.0.0 --mainFile package.json
+bun rse bump --bumpType patch --files package.json src/version.ts
+bun rse bump --bumpType minor --dryRun  # Preview changes
+bun rse bump --bumpType major --mainFile package.json
+bun rse bump --bumpType auto --mainFile package.json --files package.json reliverse.ts
+bun rse bump --bumpType manual --customVersion 2.0.0 --mainFile package.json
 
 # Advanced usage
-bun bleump \
+bun rse bump \
   --bumpType manual \
   --customVersion 1.0.1 \
   --dryRun \

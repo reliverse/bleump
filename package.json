@@ -1,28 +1,25 @@
 {
   "name": "@reliverse/bleump",
-  "version": "1.1.8",
+  "version": "1.2.0",
   "type": "module",
-  "description": "Need a hassle-free way to bump versions across your JS/TS project? `@reliverse/bleump` has got you covered! It's available both as a CLI tool and a library.",
+  "description": "@reliverse/bleump is a powerful version bumping tool for javascript and typescript libraries.",
   "scripts": {
     "pub": "bun rse publish",
-    "dev": "bun src/cli.ts",
-    "dev:ni": "bun src/cli.ts --dev --bumpType manual --customVersion 1.2.3 --dryRun --mainFile package.json --verbose --files package.json reliverse.ts",
+    "example": "bun rse --bumpType manual --customVersion 1.2.3 --dryRun --mainFile package.json --verbose --files package.json reliverse.ts",
     "check": "tsc --noEmit && biome check --fix --unsafe",
-    "latest": "bun update --latest && bun check",
-    "tests": "bun test ./.tests"
+    "latest": "bun update --latest && bun check"
   },
   "dependencies": {
-    "semver": "^7.7.2",
     "@reliverse/relinka": "^1.6.1",
-    "@reliverse/rempts": "^1.7.58"
+    "semver": "^7.7.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
-    "@reliverse/rse": "^1.7.18",
+    "@reliverse/rse": "^1.7.27",
     "@types/bun": "^1.2.21",
     "@types/node": "^24.3.0",
     "@types/semver": "^7.7.0",
     "typescript": "^5.9.2",
-    "ultracite": "^5.2.5"
+    "ultracite": "^5.2.17"
   }
 }

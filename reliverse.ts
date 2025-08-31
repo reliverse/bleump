@@ -351,7 +351,7 @@ export default defineConfig({
     indentStyle: "space",
     indentSize: 2,
     importSymbol: "~",
-    trailingComma: "all",
+    trailingCommas: "all",
     bracketSpacing: true,
     arrowParens: "always",
     tabWidth: 2,
